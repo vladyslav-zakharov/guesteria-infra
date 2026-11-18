@@ -20,7 +20,8 @@ resource "google_cloud_run_v2_service" "node-api" {
           cpu    = var.instance_limit_cpus
           memory = var.instance_limit_memory
         }
-        cpu_idle          = false
+        # Free-tier: CPU is only allocated during request processing.
+        cpu_idle          = true
         startup_cpu_boost = true
       }
 
@@ -46,20 +47,6 @@ resource "google_cloud_run_v2_service" "node-api" {
           }
         }
       }
-
-      volume_mounts {
-        name       = "cloudsql"
-        mount_path = "/cloudsql"
-      }
-    }
-
-    vpc_access {
-      egress = "PRIVATE_RANGES_ONLY"
-
-      network_interfaces {
-        network    = var.network_id
-        subnetwork = var.subnetwork_id
-      }
     }
 
     scaling {
@@ -68,24 +55,27 @@ resource "google_cloud_run_v2_service" "node-api" {
     }
 
     service_account = google_service_account.cloud_run_sa.email
-
-    volumes {
-      name = "cloudsql"
-      cloud_sql_instance {
-        instances = [var.db_connection_name]
-      }
-    }
   }
 
+  # Cloud Build owns the image: cloudbuild.yaml in guesteria-back deploys with
+  # `gcloud run services update --image=...:latest`, which also sets the
+  # revision name and template annotations/labels. Ignoring them keeps a later
+  # apply from reverting the image or rolling a new revision. set_dummy_image
+  # therefore only matters when the service is created.
   lifecycle {
     ignore_changes = [
       client,
-      client_version
+      client_version,
+      template[0].containers[0].image,
+      template[0].revision,
+      template[0].annotations,
+      template[0].labels,
     ]
   }
 
   depends_on = [
     google_artifact_registry_repository.artifact_repo,
+    google_secret_manager_secret_iam_member.dynamic_access,
   ]
 }
 
@@ -94,7 +84,7 @@ resource "google_cloudbuild_trigger" "run_deploy" {
 
   github {
     push {
-      branch = var.gh_branch_name
+      branch = "^${var.gh_branch_name}$"
     }
     name  = var.gh_repo_name
     owner = var.gh_owner

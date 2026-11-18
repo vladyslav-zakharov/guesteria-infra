@@ -4,3 +4,9 @@
 *.tfstate.backup
 
 node_modules
+
+# Build artifact of data.archive_file (ai-kill-switch function source).
+tf/modules/*/.tmp/
+
+# Project number and billing account stay out of the public repo.
+tf/dev/account.auto.tfvars
