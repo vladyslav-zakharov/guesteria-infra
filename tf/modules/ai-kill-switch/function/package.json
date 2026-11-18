@@ -1,0 +1,11 @@
+{
+  "name": "ai-kill-switch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Function that disables paid AI APIs when the ai-kill-switch budget crosses its threshold",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.2",
+    "google-auth-library": "^9.14.1"
+  }
+}

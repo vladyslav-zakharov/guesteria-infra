@@ -1,0 +1,6 @@
+# Copy to account.auto.tfvars (untracked) and fill in the real values:
+#   gcloud projects describe guesteria-stayhub --format='value(projectNumber)'
+#   gcloud billing projects describe guesteria-stayhub --format='value(billingAccountName)'
+# Drop the billingAccounts/ prefix from the second value.
+project_number  = 000000000000
+billing_account = "XXXXXX-XXXXXX-XXXXXX"

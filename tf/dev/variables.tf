@@ -1,7 +1,3 @@
-# variable "example_secret_for_cloud_run" {
-#   type = string
-# }
-
 variable "project" {
   type        = string
   description = "The GCP project ID to deploy resources"
@@ -32,31 +28,9 @@ variable "service_name" {
   type        = string
 }
 
-variable "alert_emails" {
-  description = "Email addresses to notify on Cloud Run 5xx alerts"
-  type        = list(string)
-}
-
-variable "slack_channel_name" {
-  description = "Slack channel to post 5xx alerts to (e.g. #alerts). Empty disables Slack."
+variable "frontend_url" {
   type        = string
-  default     = ""
-}
-
-variable "slack_auth_token_secret_id" {
-  description = "Secret Manager secret id holding the Slack auth token for the alert channel"
-  type        = string
-  default     = ""
-}
-
-variable "public_bucket_name" {
-  description = "Deployed resources naming e.g. my-project-name"
-  type        = string
-}
-
-variable "public_bucket_cors_allowed_origins" {
-  description = "List of allowed origins for browser uploads (CORS)"
-  type        = list(string)
+  description = "The frontend (Vercel) origin, used for CORS"
 }
 
 variable "gh_branch_name" {
@@ -74,11 +48,6 @@ variable "gh_repo_name" {
   type        = string
 }
 
-variable "db_instance_name" {
-  description = "The name of the Cloud SQL instance"
-  type        = string
-}
-
 // cloud-run module
 
 variable "cloud_run_instance_limit_cpus" {
@@ -92,57 +61,64 @@ variable "cloud_run_instance_limit_memory" {
 }
 
 variable "cloud_run_min_instance_count" {
-  description = "The minimum number of instances to run. Development - 0, production - 1. If there are 0 instances, the application will go to sleep to reduce costs."
+  description = "The minimum number of instances to run. 0 = scale to zero (free), 1 = always-on (eliminates cold starts)."
   type        = number
+  default     = 0
 }
 
 variable "cloud_run_application_url" {
-  description = "Cloud Run application URL"
+  description = "Cloud Run application URL (update after first apply)"
   type        = string
 }
 
 variable "cloud_run_set_dummy_image" {
-  description = "Option whether to use a Dockerfile image or a mock image from GCP. Change to true when initially creating cloud run resource (in order to avoid an error)."
+  description = "Use a placeholder image when the Cloud Run service is created, because Artifact Registry has no image yet. Only read on create: the image is in ignore_changes, so after the first deploy Cloud Build owns it and this flag has no effect."
   type        = bool
 }
 
-// cloud-sql module
+variable "ai_daily_limit" {
+  description = "Daily cap on AI (Gemini) calls per user per UTC day, enforced by the API (AI_DAILY_LIMIT)."
+  type        = number
+}
 
-variable "cloud_sql_tier" {
-  description = "The tier of the Cloud SQL instance"
+variable "ai_global_daily_limit" {
+  description = "Daily cap on AI (Gemini) calls across all users, enforced by the API (AI_GLOBAL_DAILY_LIMIT)."
+  type        = number
+  default     = 500
+}
+
+variable "trust_proxy_hops" {
+  description = "Number of proxy hops in front of the API whose X-Forwarded-For entries the API trusts for the client IP (TRUST_PROXY_HOPS). Expected chain is Vercel rewrite -> Google Front End -> Cloud Run, so 2; confirm after the first deploy by checking that two different clients get different request.ip. 1 would put all Vercel traffic in one rate-limit bucket."
+  type        = number
+}
+
+// budget module
+
+variable "billing_account" {
+  description = "The Cloud Billing account ID the budget is created under"
   type        = string
 }
 
-variable "cloud_sql_db_deletion_protection" {
-  description = "Whether to enable deletion protection for the Cloud SQL instance"
+variable "budget_amount" {
+  description = "The monthly budget amount in USD. This only triggers alert emails to the billing account's admins/users at 50/90/100% (plus a forecasted-100% rule) — it does NOT cap or throttle spend."
+  type        = number
+}
+
+// ai-kill-switch module
+
+variable "ai_kill_switch_enabled" {
+  description = "Whether the AI kill-switch (budget, Pub/Sub topic, Cloud Function) exists. Set false to remove the automated kill-switch without deleting Terraform state."
   type        = bool
+  default     = true
 }
 
-variable "cloud_sql_allowed_ips" {
-  description = "List of IP addresses or CIDR blocks allowed to access Cloud SQL"
+variable "ai_kill_switch_budget_amount" {
+  description = "The monthly spend threshold in USD that fires the kill-switch. Unlike budget_amount above, crossing this ACTUALLY disables ai_kill_switch_target_services — it is not just an alert email."
+  type        = number
+}
+
+variable "ai_kill_switch_target_services" {
+  description = "The paid, per-request GCP APIs to disable when the kill-switch budget crosses its threshold."
   type        = list(string)
-  default     = []
-}
-
-variable "cloud_sql_database_flags" {
-  description = "Database flags to set on the Cloud SQL instance"
-  type        = list(object({
-    name  = string
-    value = string
-  }))
-  default = []
-}
-
-
-variable "api_environment_variables" {
-  description = "Environment variables for the api container"
-  type = object({
-    cors_origin = string
-  })
-}
-
-variable "api_secret_keys" {
-  description = "Secret keys for the API container"
-  type = object({
-  })
+  default     = ["aiplatform.googleapis.com"]
 }

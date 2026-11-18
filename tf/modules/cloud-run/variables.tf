@@ -3,11 +3,6 @@ variable "project" {
   description = "The GCP project ID to deploy resources"
 }
 
-variable "project_number" {
-  type        = number
-  description = "The GCP project number to deploy resources"
-}
-
 variable "region" {
   type        = string
   description = "Region where to deploy resources"
@@ -16,7 +11,6 @@ variable "region" {
 variable "environment" {
   type        = string
   description = "Resources deployment environment"
-
 }
 
 variable "service_name" {
@@ -40,21 +34,6 @@ variable "gh_repo_name" {
   type        = string
 }
 
-variable "network_id" {
-  description = "Computer Network Id"
-  type        = string
-}
-
-variable "subnetwork_id" {
-  description = "VPC Subnetwork Id"
-  type        = string
-}
-
-variable "db_connection_name" {
-  description = "Postgres DB Connection Name"
-  type        = string
-}
-
 variable "set_dummy_image" {
   description = "Set dummy image for Cloud Run (use when Artifact Registry is not yet created and has no image)"
   type        = bool
@@ -67,7 +46,7 @@ variable "secret_vars" {
 }
 
 variable "env_vars" {
-  description = "A map of environment variables to pass to the container."
+  description = "A map of plain environment variables to pass to the container."
   type        = map(string)
   default     = {}
 }
